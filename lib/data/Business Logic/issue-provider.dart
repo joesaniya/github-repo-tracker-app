@@ -11,8 +11,15 @@ class IssueProvider extends ChangeNotifier {
   String? errorMessage; // To store error messages
 
   Future<void> fetchIssues(String repoName, String state) async {
-    log('Fetching issues for repo: $repoName===>State:$state');
+    log('Fetching issues for repo: $repoName ===> State: $state');
+
     if (isLoading || !hasMore) return;
+
+    if (issues.isNotEmpty) {
+      issues.clear();
+      page = 1;
+      hasMore = true;
+    }
 
     isLoading = true;
     errorMessage = null; // Reset previous error
@@ -20,7 +27,6 @@ class IssueProvider extends ChangeNotifier {
 
     try {
       final dio = Dio();
-      dio.options.headers["Authorization"] = ''; // Set your token here
 
       final response = await dio.get(
         'https://api.github.com/repos/$repoName/issues',
@@ -31,16 +37,75 @@ class IssueProvider extends ChangeNotifier {
         },
       );
 
-      log('get data:${response.requestOptions.uri}');
+      log('Fetched data from: ${response.requestOptions.uri}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
-        if (data.isEmpty) hasMore = false;
+        if (data.isEmpty) {
+          hasMore = false;
+        } else {
+          issues.addAll(
+              data.map((issue) => issue as Map<String, dynamic>).toList());
+          page++;
+          log('Issues fetched: $issues');
+        }
+      } else {
+        hasMore = false;
+        errorMessage = 'Failed to fetch issues: ${response.statusCode}';
+      }
+    } catch (e) {
+      log('Failed to fetch issues: $e');
+      errorMessage = 'Error fetching issues. Please try again later.';
+      hasMore = false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
 
-        issues.addAll(
-            data.map((issue) => issue as Map<String, dynamic>).toList());
-        page++;
-        log('Issues fetched: $issues');
+  Future<void> fetchIssuess(String repoName, String state) async {
+    log('Fetching issues for repo: $repoName ===> State: $state');
+
+    // Check if already loading or if there's no more data to fetch
+    if (isLoading || !hasMore) return;
+
+    // Reset issues and page when changing state
+    if (issues.isNotEmpty) {
+      issues.clear();
+      page = 1;
+      hasMore = true; // Reset hasMore for new state
+    }
+
+    isLoading = true;
+    errorMessage = null; // Reset previous error
+    notifyListeners();
+
+    try {
+      final dio = Dio();
+      dio.options.headers["Authorization"] =
+          ''; // Set your token here if required
+
+      final response = await dio.get(
+        'https://api.github.com/repos/$repoName/issues',
+        queryParameters: {
+          'state': state,
+          'page': page,
+          'per_page': 10,
+        },
+      );
+
+      log('Fetched data from: ${response.requestOptions.uri}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        if (data.isEmpty) {
+          hasMore = false;
+        } else {
+          issues.addAll(
+              data.map((issue) => issue as Map<String, dynamic>).toList());
+          page++;
+          log('Issues fetched: $issues');
+        }
       } else {
         hasMore = false;
         errorMessage = 'Failed to fetch issues: ${response.statusCode}';

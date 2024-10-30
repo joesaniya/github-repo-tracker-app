@@ -36,6 +36,7 @@ class _RepoListState extends State<RepoList> {
               _scrollController.position.maxScrollExtent &&
           provider.hasMore &&
           !provider.isLoading) {
+        log('scroll repo:${widget.reponame}=>scroll state:$state');
         provider.fetchIssues(widget.reponame, state);
       }
     });
@@ -66,55 +67,111 @@ class _RepoListState extends State<RepoList> {
                 ),
               ],
             ),
-            body: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Row(
+            body: provider.isLoading
+                ? Center(child: SizedBox(child: CircularProgressIndicator()))
+                : Column(
                     children: [
-                      _buildTab('Open', 'open', provider),
-                      _buildTab('Closed', 'closed', provider),
+                      Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Row(
+                          children: [
+                            _buildTab('Open', 'open', provider),
+                            _buildTab('Closed', 'closed', provider),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: provider.isLoading && provider.issues.isEmpty
+                            ? Center(child: CircularProgressIndicator())
+                            : provider.errorMessage != null
+                                ? Center(
+                                    child: Text(
+                                      provider.errorMessage!,
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  )
+                                : ListView.separated(
+                                    controller: _scrollController,
+                                    itemCount: provider.issues.length +
+                                        (provider.hasMore ? 1 : 0),
+                                    separatorBuilder: (context, index) {
+                                      return SizedBox(
+                                        height: 10,
+                                      );
+                                    },
+                                    itemBuilder: (context, index) {
+                                      if (index == provider.issues.length) {
+                                        return Center(
+                                            child: CircularProgressIndicator());
+                                      }
+                                      final issue = provider.issues[index];
+
+                                      return GestureDetector(
+                                        onTap: () async {
+                                          final url = Uri.parse(issue[
+                                              'html_url']); // Parse URL as a Uri object
+                                          if (await canLaunchUrl(url)) {
+                                            await launchUrl(url,
+                                                mode: LaunchMode
+                                                    .externalApplication); // Ensure external app/browser is used
+                                          } else {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                  content: Text(
+                                                      'Could not launch $url')),
+                                            );
+                                            throw 'Could not launch $url';
+                                          }
+                                        },
+
+                                        /*  onTap: () async {
+                                          final url = issue['html_url'];
+                                          if (await canLaunch(url)) {
+                                            await launch(url);
+                                          } else {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                  content: Text(
+                                                      'Could not launch $url')),
+                                            );
+                                            throw 'Could not launch $url';
+                                          }
+                                        },*/
+                                        child: Container(
+                                          margin: EdgeInsets.symmetric(
+                                              horizontal: 10),
+                                          padding: EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: Colors.teal.shade100,
+                                            borderRadius: BorderRadius.all(
+                                                Radius.circular(10)),
+                                          ),
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                issue['title'],
+                                                style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight:
+                                                        FontWeight.w400),
+                                              ),
+                                              Text(
+                                                  'Issue #${issue['number']} by ${issue['user']['login']} created at ${issue['created_at']}'),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                      ),
                     ],
                   ),
-                ),
-                Expanded(
-                  child: provider.isLoading && provider.issues.isEmpty
-                      ? Center(child: CircularProgressIndicator())
-                      : provider.errorMessage != null
-                          ? Center(
-                              child: Text(
-                                provider.errorMessage!,
-                                style: TextStyle(color: Colors.red),
-                              ),
-                            )
-                          : ListView.builder(
-                              controller: _scrollController,
-                              itemCount: provider.issues.length +
-                                  (provider.hasMore ? 1 : 0),
-                              itemBuilder: (context, index) {
-                                if (index == provider.issues.length) {
-                                  return Center(
-                                      child: CircularProgressIndicator());
-                                }
-                                final issue = provider.issues[index];
-                                return ListTile(
-                                  title: Text(issue['title']),
-                                  subtitle: Text(
-                                      'Issue #${issue['number']} by ${issue['user']['login']}'),
-                                  onTap: () async {
-                                    final url = issue['html_url'];
-                                    if (await canLaunch(url)) {
-                                      await launch(url);
-                                    } else {
-                                      throw 'Could not launch $url';
-                                    }
-                                  },
-                                );
-                              },
-                            ),
-                ),
-              ],
-            ),
           );
         },
       ),
