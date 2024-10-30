@@ -17,6 +17,97 @@ class IssueProvider extends ChangeNotifier {
   Future<void> fetchIssues(String repoName, String state) async {
     log('Fetching issues for repo: $repoName ===> State: $state');
 
+    if (isLoading || !hasMore) return;
+
+    if (issues.isEmpty || page == 1) {
+      hasMore = true;
+    }
+
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final dio = Dio();
+      final String token =
+          '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'; // Use your GitHub token
+      dio.options.headers['Authorization'] = 'token $token';
+
+      // Check rate limits
+      final rateLimitResponse = await dio.get(
+        'https://api.github.com/rate_limit',
+        options: Options(
+          headers: {
+            'Authorization': 'token $token',
+          },
+        ),
+      );
+
+      if (rateLimitResponse.statusCode == 200) {
+        final rateLimitData = rateLimitResponse.data;
+        final remainingRequests = rateLimitData['rate']['remaining'];
+        final resetTime = rateLimitData['rate']['reset'];
+
+        log('Remaining requests: $remainingRequests');
+        if (remainingRequests == 0) {
+          final resetDateTime =
+              DateTime.fromMillisecondsSinceEpoch(resetTime * 1000);
+          errorMessage =
+              'Rate limit exceeded. Try again at ${resetDateTime.toLocal()}';
+          hasMore =
+              false; // No more requests can be made until rate limit resets
+          notifyListeners(); // Notify listeners for UI update
+          return; // Exit the method if rate limit is exceeded
+        }
+      } else {
+        errorMessage =
+            'Failed to fetch rate limits: ${rateLimitResponse.statusCode}';
+        notifyListeners();
+        return;
+      }
+
+      // Fetch issues
+      final response = await dio.get(
+        'https://api.github.com/repos/$repoName/issues',
+        queryParameters: {
+          'state': state,
+          'page': page,
+          'per_page': 10,
+          'sort': sort,
+          'labels': labels.join(','),
+        },
+      );
+
+      log('Fetched data from: ${response.requestOptions.uri}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        if (data.isEmpty) {
+          hasMore = false;
+        } else {
+          issues.addAll(
+            data.map((issue) => issue as Map<String, dynamic>).toList(),
+          );
+          page++;
+          log('Issues fetched: $issues');
+        }
+      } else {
+        hasMore = false;
+        errorMessage = 'Failed to fetch issues: ${response.statusCode}';
+      }
+    } catch (e) {
+      log('Failed to fetch issues: $e');
+      errorMessage = 'Error fetching issues. Please try again later.';
+      hasMore = false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchIssues1(String repoName, String state) async {
+    log('Fetching issues for repo: $repoName ===> State: $state');
+
     // Prevent multiple simultaneous fetches
     if (isLoading || !hasMore) return;
 

@@ -43,108 +43,163 @@ class _RepoListState extends State<RepoList> {
     log('Repo: ${widget.reponame}');
     return ChangeNotifierProvider(
       create: (_) => IssueProvider()..fetchIssues(widget.reponame, state),
-      child: Consumer<IssueProvider>(
-        builder: (context, provider, _) {
-          return Scaffold(
-            appBar: AppBar(
-              title: Text('Repo Issues'),
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.refresh),
-                  onPressed: () {
+      child: Consumer<IssueProvider>(builder: (context, provider, _) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text('Repo Issues'),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.refresh),
+                onPressed: () {
+                  provider.fetchIssues(widget.reponame, state);
+                },
+              ),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  provider.setSort(value); // Set the sort option
+                  provider.fetchIssues(widget.reponame, state);
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                      value: 'created', child: Text('Sort by Created')),
+                  PopupMenuItem(
+                      value: 'updated', child: Text('Sort by Updated')),
+                  PopupMenuItem(
+                      value: 'comments', child: Text('Sort by Comments')),
+                ],
+              ),
+              IconButton(
+                icon: Icon(Icons.filter_list),
+                onPressed: () async {
+                  final List<String>? selectedLabels =
+                      await showDialog<List<String>>(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SimpleDialog(
+                        title: Text('Select Labels'),
+                        children: [
+                          SimpleDialogOption(
+                            onPressed: () {
+                              Navigator.pop(context, ['bug']);
+                            },
+                            child: Text('Bug'),
+                          ),
+                          SimpleDialogOption(
+                            onPressed: () {
+                              Navigator.pop(context, ['enhancement']);
+                            },
+                            child: Text('Enhancement'),
+                          ),
+                          SimpleDialogOption(
+                            onPressed: () {
+                              Navigator.pop(context, ['question']);
+                            },
+                            child: Text('Question'),
+                          ),
+                          SimpleDialogOption(
+                            onPressed: () {
+                              Navigator.pop(context, []);
+                            },
+                            child: Text('Clear Filters'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                  if (selectedLabels != null) {
+                    provider
+                        .setLabels(selectedLabels); // Set the selected labels
                     provider.fetchIssues(widget.reponame, state);
-                  },
-                ),
-              ],
-            ),
-            body: provider.isLoading && provider.issues.isEmpty
-                ? Center(child: CircularProgressIndicator())
-                : Column(
-                    children: [
-                      SizedBox(height: 10),
-                      Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Row(
-                          children: [
-                            _buildTab('Open', 'open', provider),
-                            _buildTab('Closed', 'closed', provider),
-                          ],
-                        ),
+                  }
+                },
+              ),
+            ],
+          ),
+          body: provider.isLoading && provider.issues.isEmpty
+              ? Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Row(
+                        children: [
+                          _buildTab('Open', 'open', provider),
+                          _buildTab('Closed', 'closed', provider),
+                        ],
                       ),
-                      Expanded(
-                        child: provider.errorMessage != null
-                            ? Center(
-                                child: Text(
-                                  provider.errorMessage!,
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                              )
-                            : ListView.separated(
-                                controller: _scrollController,
-                                itemCount: provider.issues.length +
-                                    (provider.hasMore
-                                        ? 1
-                                        : 0), // Add loading indicator if more issues to load
-                                separatorBuilder: (context, index) {
-                                  return SizedBox(height: 10);
-                                },
-                                itemBuilder: (context, index) {
-                                  if (index == provider.issues.length) {
-                                    return Center(
-                                        child: CircularProgressIndicator());
-                                  }
-                                  final issue = provider.issues[index];
-
-                                  return GestureDetector(
-                                    onTap: () async {
-                                      final url = Uri.parse(issue['html_url']);
-                                      if (await canLaunchUrl(url)) {
-                                        await launchUrl(url,
-                                            mode:
-                                                LaunchMode.externalApplication);
-                                      } else {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                              content: Text(
-                                                  'Could not launch $url')),
-                                        );
-                                        throw 'Could not launch $url';
-                                      }
-                                    },
-                                    child: Container(
-                                      margin:
-                                          EdgeInsets.symmetric(horizontal: 10),
-                                      padding: EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.teal.shade100,
-                                        borderRadius: BorderRadius.all(
-                                            Radius.circular(10)),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            issue['title'],
-                                            style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w400),
-                                          ),
-                                          Text(
-                                              'Issue #${issue['number']} by ${issue['user']['login']} created at ${issue['created_at']}'),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
+                    ),
+                    Expanded(
+                      child: provider.errorMessage != null
+                          ? Center(
+                              child: Text(
+                                provider.errorMessage!,
+                                style: TextStyle(color: Colors.red),
                               ),
-                      ),
-                    ],
-                  ),
-          );
-        },
-      ),
+                            )
+                          : ListView.separated(
+                              controller: _scrollController,
+                              itemCount: provider.issues.length +
+                                  (provider.hasMore ? 1 : 0),
+                              separatorBuilder: (context, index) {
+                                return SizedBox(height: 10);
+                              },
+                              itemBuilder: (context, index) {
+                                if (index == provider.issues.length) {
+                                  return Center(
+                                      child: CircularProgressIndicator());
+                                }
+                                final issue = provider.issues[index];
+
+                                return GestureDetector(
+                                  onTap: () async {
+                                    final url = Uri.parse(issue['html_url']);
+                                    if (await canLaunchUrl(url)) {
+                                      await launchUrl(url,
+                                          mode: LaunchMode.externalApplication);
+                                    } else {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content:
+                                                Text('Could not launch $url')),
+                                      );
+                                      throw 'Could not launch $url';
+                                    }
+                                  },
+                                  child: Container(
+                                    margin:
+                                        EdgeInsets.symmetric(horizontal: 10),
+                                    padding: EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.teal.shade100,
+                                      borderRadius:
+                                          BorderRadius.all(Radius.circular(10)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          issue['title'],
+                                          style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w400),
+                                        ),
+                                        Text(
+                                          'Issue #${issue['number']} by ${issue['user']['login']} created at ${issue['created_at']}',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+        );
+      }),
     );
   }
 
