@@ -54,7 +54,6 @@ class _RepoListState extends State<RepoList> {
         }
       }
     });
-    
   }
 
   @override
@@ -361,7 +360,8 @@ class _RepoListState extends State<RepoList> {
           }
         },
         child: Container(
-          color: state == newState ? Colors.blue : Colors.grey,
+          height: 50,
+          color: state == newState ? Colors.teal.shade500 : Colors.grey,
           padding: EdgeInsets.all(8),
           child:
               Center(child: Text(label, style: TextStyle(color: Colors.white))),
