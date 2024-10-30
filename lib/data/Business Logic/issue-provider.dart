@@ -10,9 +10,9 @@ class IssueProvider extends ChangeNotifier {
   List<Map<String, dynamic>> issues = [];
   String? errorMessage;
 
-  // New fields for sorting and filtering
-  String sort = 'created'; // Default sort option
-  List<String> labels = []; // Empty list means no filter by label
+
+  String sort = 'created'; 
+  List<String> labels = []; 
 
   Future<void> fetchIssues(String repoName, String state) async {
     if (isLoading || !hasMore) return;
