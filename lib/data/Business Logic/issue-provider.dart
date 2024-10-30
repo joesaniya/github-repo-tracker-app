@@ -10,11 +10,55 @@ class IssueProvider extends ChangeNotifier {
   List<Map<String, dynamic>> issues = [];
   String? errorMessage;
 
-
-  String sort = 'created'; 
-  List<String> labels = []; 
-
+  String sort = 'created';
+  List<String> labels = [];
   Future<void> fetchIssues(String repoName, String state) async {
+    if (isLoading || !hasMore) return;
+
+    // Enable loading state
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners(); // Notify immediately for loading state
+
+    try {
+      final dio = Dio();
+      final response = await dio.get(
+        'https://api.github.com/repos/$repoName/issues',
+        queryParameters: {
+          'state': state,
+          'page': page,
+          'per_page': 10,
+          'sort': sort,
+          'labels': labels.join(','),
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        if (data.isEmpty) {
+          hasMore = false;
+        } else {
+          issues.addAll(
+              data.map((issue) => issue as Map<String, dynamic>).toList());
+          page++;
+        }
+        notifyListeners(); // Notify immediately after data update
+      } else {
+        hasMore = false;
+        errorMessage = 'Failed to fetch issues: ${response.statusCode}';
+        notifyListeners(); // Notify listeners on error
+      }
+    } catch (e) {
+      errorMessage = 'Error fetching issues. Please try again later.';
+      hasMore = false;
+      notifyListeners(); // Notify listeners on error
+    } finally {
+      isLoading = false;
+      notifyListeners(); // Final notification to reset loading state
+    }
+  }
+
+  Future<void> fetchIssues1(String repoName, String state) async {
     if (isLoading || !hasMore) return;
 
     if (issues.isNotEmpty) {

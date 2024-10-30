@@ -23,7 +23,7 @@ class _RepoListState extends State<RepoList> {
   double? xAlign;
   Color? loginColor;
   Color? signInColor;
-  @override
+  /*@override
   void initState() {
     super.initState();
     xAlign = Appcolors.loginAlign;
@@ -40,6 +40,21 @@ class _RepoListState extends State<RepoList> {
         provider.fetchIssues(widget.reponame, state);
       }
     });
+  }*/
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent) {
+        final provider = Provider.of<IssueProvider>(context, listen: false);
+        if (!provider.isLoading && provider.hasMore) {
+          log('scroll repo:${widget.reponame}=>scroll state:$state');
+          provider.fetchIssues(widget.reponame, state);
+        }
+      }
+    });
+    
   }
 
   @override
