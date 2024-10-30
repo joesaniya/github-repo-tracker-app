@@ -8,6 +8,77 @@ class IssueProvider extends ChangeNotifier {
   bool isLoading = false;
   bool hasMore = true;
   List<Map<String, dynamic>> issues = [];
+  String? errorMessage;
+
+  // New fields for sorting and filtering
+  String sort = 'created'; // Default sort option
+  List<String> labels = []; // Empty list means no filter by label
+
+  Future<void> fetchIssues(String repoName, String state) async {
+    if (isLoading || !hasMore) return;
+
+    if (issues.isNotEmpty) {
+      issues.clear();
+      page = 1;
+      hasMore = true;
+    }
+
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final dio = Dio();
+      final response = await dio.get(
+        'https://api.github.com/repos/$repoName/issues',
+        queryParameters: {
+          'state': state,
+          'page': page,
+          'per_page': 10,
+          'sort': sort, // Add sorting by 'created', 'updated', or 'comments'
+          'labels': labels.join(','), // Comma-separated labels
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        if (data.isEmpty) {
+          hasMore = false;
+        } else {
+          issues.addAll(
+              data.map((issue) => issue as Map<String, dynamic>).toList());
+          page++;
+        }
+      } else {
+        hasMore = false;
+        errorMessage = 'Failed to fetch issues: ${response.statusCode}';
+      }
+    } catch (e) {
+      errorMessage = 'Error fetching issues. Please try again later.';
+      hasMore = false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Methods to set sorting and filtering options
+  void setSort(String newSort) {
+    sort = newSort;
+    notifyListeners();
+  }
+
+  void setLabels(List<String> newLabels) {
+    labels = newLabels;
+    notifyListeners();
+  }
+}
+
+class IssueProviderr extends ChangeNotifier {
+  int page = 1;
+  bool isLoading = false;
+  bool hasMore = true;
+  List<Map<String, dynamic>> issues = [];
   String? errorMessage; // To store error messages
 
   Future<void> fetchIssues(String repoName, String state) async {

@@ -65,12 +65,75 @@ class _RepoListState extends State<RepoList> {
                     provider.fetchIssues(widget.reponame, state);
                   },
                 ),
+
+                //sort
               ],
             ),
             body: provider.isLoading
                 ? Center(child: SizedBox(child: CircularProgressIndicator()))
                 : Column(
                     children: [
+                      SizedBox(
+                        height: 10,
+                      ),
+                      Container(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Row(
+                              children: [
+                                Text('Sort:  '),
+                                DropdownButton<String>(
+                                  value: provider.sort,
+                                  items: [
+                                    DropdownMenuItem(
+                                        value: 'created',
+                                        child: Text('Created Date')),
+                                    DropdownMenuItem(
+                                        value: 'updated',
+                                        child: Text('Updated Date')),
+                                    DropdownMenuItem(
+                                        value: 'comments',
+                                        child: Text('Comments')),
+                                  ],
+                                  onChanged: (newSort) {
+                                    if (newSort != null) {
+                                      provider.setSort(newSort);
+                                      provider.fetchIssues(
+                                          widget.reponame, state);
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+
+                            /*  DropdownButton<List<String>>(
+                              hint: Text("Labels"),
+                              items: [
+                                DropdownMenuItem(
+                                  value: ['bug'],
+                                  child: Text('Bug'),
+                                ),
+                                DropdownMenuItem(
+                                  value: ['enhancement'],
+                                  child: Text('Enhancement'),
+                                ),
+                              ],
+                              onChanged: (newLabels) {
+                                if (newLabels != null) {
+                                  provider.setLabels(newLabels);
+                                  provider.fetchIssues(widget.reponame, state);
+                                }
+                              },
+                            ),
+                          */
+                          ],
+                        ),
+                      ),
+                      SizedBox(
+                        height: 5,
+                      ),
                       Padding(
                         padding: const EdgeInsets.all(20.0),
                         child: Row(
